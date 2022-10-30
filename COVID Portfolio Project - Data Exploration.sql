@@ -113,8 +113,8 @@ AS
 SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
 , SUM(vac.new_vaccinations) OVER (PARTITION BY dea.Location ORDER BY dea.location, dea.Date) AS RollingPeopleVaccinated
 --, (RollingPeopleVaccinated/population)*100
-FROM PortfolioProject..CovidDeaths AS dea
-JOIN PortfolioProject..CovidVaccinations AS vac
+FROM PortfolioProject1.dbo.CovidDeaths AS dea
+JOIN PortfolioProject1.dbo.CovidVaccinations AS vac
 	ON dea.location = vac.location
 	AND dea.date = vac.date
 WHERE dea.continent IS NOT NULL
@@ -139,10 +139,10 @@ RollingPeopleVaccinated numeric
 
 INSERT INTO #PercentPopulationVaccinated
 SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
-, SUM(vac.new_vaccinations)) OVER (PARTITION BY dea.Location ORDER BY dea.location, dea.Date) AS RollingPeopleVaccinated
+, SUM(vac.new_vaccinations) OVER (PARTITION BY dea.Location ORDER BY dea.location, dea.Date) AS RollingPeopleVaccinated
 --, (RollingPeopleVaccinated/population)*100
-FROM PortfolioProject..CovidDeaths dea
-JOIN PortfolioProject..CovidVaccinations vac
+FROM PortfolioProject1.dbo.CovidDeaths AS dea
+JOIN PortfolioProject1.dbo.CovidVaccinations AS vac
 	ON dea.location = vac.location
 	AND dea.date = vac.date
 
@@ -154,10 +154,10 @@ FROM #PercentPopulationVaccinated
 
 CREATE View PercentPopulationVaccinated AS
 SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
-, SUM(vac.new_vaccinations)) OVER (PARTITION BY dea.Location ORDER BY dea.location, dea.Date) AS RollingPeopleVaccinated
+, SUM(vac.new_vaccinations) OVER (PARTITION BY dea.Location ORDER BY dea.location, dea.Date) AS RollingPeopleVaccinated
 --, (RollingPeopleVaccinated/population)*100
-FROM PortfolioProject..CovidDeaths AS dea
-JOIN PortfolioProject..CovidVaccinations AS vac
+FROM PortfolioProject1.dbo.CovidDeaths AS dea
+JOIN PortfolioProject1.dbo.CovidVaccinations AS vac
 	ON dea.location = vac.location
 	AND dea.date = vac.date
 WHERE dea.continent IS NOT NULL
