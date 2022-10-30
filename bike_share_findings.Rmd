@@ -1,0 +1,258 @@
+---
+title: "Bike Share Case Analysis Findings"
+author: "Hasan"
+date: "2022-10-05"
+output: html_document
+---
+## Dataset
+
+The data is taken from https://divvy-tripdata.s3.amazonaws.com/index.html where the months are between August 2021 and August 2022. The data has been made available by Motivate International Inc. under this [license](https://www.divvybikes.com/data-license-agreement).)
+
+## Prepare for analysis
+
+This section is for creating loading libraries, creating the data frame and viewing the structure of the data. Loaded the 'tidyverse', 'here', 'skimr', 'janitor' and 'lubridate' packages.
+```{r loading packages}
+library(tidyverse)
+library(here) #library for path
+library(skimr)
+library(janitor) #library for cleaning
+library(lubridate) #library for date functions
+```
+
+Importing the data:
+
+```{r importing data}
+Aug2021 <- read_csv('Aug-2021.csv') 
+Sep2021 <- read_csv('Sep-2021.csv') 
+Oct2021 <- read_csv('Oct-2021.csv') 
+Nov2021 <- read_csv('Nov-2021.csv') 
+Dec2021 <- read_csv('Dec-2021.csv') 
+Jan2022 <- read_csv('Jan-2022.csv') 
+Feb2022 <- read_csv('Feb-2022.csv') 
+Mar2022 <- read_csv('Mar-2022.csv') 
+Apr2022 <- read_csv('Apr-2022.csv') 
+May2022 <- read_csv('May-2022.csv') 
+Jun2022 <- read_csv('Jun-2022.csv') 
+Jul2022 <- read_csv('Jul-2022.csv') 
+Aug2022 <- read_csv('Aug-2022.csv') 
+```
+
+Checking column names to see if there are differences in naming:
+
+```{r view the column names}
+colnames(Aug2021)
+colnames(Sep2021)
+colnames(Oct2021)
+colnames(Nov2021)
+colnames(Dec2021)
+colnames(Jan2022)
+colnames(Feb2022)
+colnames(Mar2022)
+colnames(Apr2022)
+colnames(May2022)
+colnames(Jun2022)
+colnames(Jul2022)
+colnames(Aug2022)
+```
+
+Combining the data into a single data frame:
+```{r combine the data}
+all <- bind_rows(Aug2021, Sep2021, Oct2021, Nov2021, Dec2021, Jan2022, Feb2022, Mar2022, Apr2022, May2022, Jun2022, Jul2022, Aug2022)
+```
+
+Deleting unnecessary columns:
+
+```{r deleting columns}
+all <- all %>% 
+  select(-c(start_lat, start_lng, end_lat, end_lng))
+```
+
+Getting initial info about the data.
+
+```{r geting some info}
+colnames(all)
+
+nrow(all)
+
+dim(all)
+
+head(all)
+tail(all)
+
+str(all)
+summary(all)
+```
+
+Getting some info about the number of casual customers and members:
+
+```{r}
+table(all$member_casual) # to see the number of members and casuals
+```
+
+To analyze in more depth, created new columns about date.
+
+```{r creating columns about date}
+all$date <- as.Date(all$started_at) #The default format is yyyy-mm-dd
+all$month <- format(as.Date(all$date), "%m")
+all$day <- format(as.Date(all$date), "%d")
+all$year <- format(as.Date(all$date), "%Y")
+all$day_of_week <- format(as.Date(all$date), "%A")
+
+library(hydroTSM) # a library to get seasons from dates
+all$season <- time2season(all$date, out.fmt = "seasons") #creating a column for seasons
+table(all$season)
+
+```
+
+Creating a new column for ride length by subtracting the start date from the end date.
+
+```{r}
+all$ride_length <- difftime(all$ended_at,all$started_at) # get the difference using difftime()
+
+#ride length should be numeric so we check 
+
+is.factor(all$ride_length)
+all$ride_length <- as.numeric(as.character(all$ride_length)) # change the type of ride length as numeric
+is.numeric(all$ride_length) # to check again
+```
+
+
+Click here: [R markdown](http://rmarkdown.rstudio.com)
+
+
+## Cleaning
+
+This section is for cleaning the data. A clean data is a must for a good analysis. Used [this website](https://www.datasciencemadesimple.com/delete-or-drop-rows-in-r-with-conditions-2/) to learn how to drop rows with certaing conditions in R. Also created a new data frame due to removing some of the data.
+
+```{r}
+all_v2 <- drop_na(all) # dropping all of the NA values
+all_v2 <-  all_v2[!(all_v2$ride_length<0 | all_v2$start_station_name == "HQ QR"), ] # to remove bad data
+```
+
+
+## Analysis
+
+To get a glimpse about the new data frame: 
+
+```{r}
+glimpse(all_v2) 
+```
+
+```{r}
+
+mean(all_v2$ride_length) #straight average (total ride length / rides)
+median(all_v2$ride_length) #midpoint number in the ascending array of ride lengths
+max(all_v2$ride_length) #longest ride
+min(all_v2$ride_length) #shortest ride
+
+
+#above can be get by summary(all_v2$ride_length)
+
+aggregate(all_v2$ride_length ~ all_v2$member_casual, FUN = mean)
+aggregate(all_v2$ride_length ~ all_v2$member_casual, FUN = median)
+aggregate(all_v2$ride_length ~ all_v2$member_casual, FUN = max)
+aggregate(all_v2$ride_length ~ all_v2$member_casual, FUN = min)
+
+aggregate(all_v2$ride_length ~ all_v2$member_casual + all_v2$day_of_week, FUN = mean)  # to see the average ride time each day, members vs. casual
+
+# to order the days
+
+all_v2$day_of_week <- ordered(all_v2$day_of_week, levels=c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+
+aggregate(all_v2$ride_length ~ all_v2$member_casual + all_v2$day_of_week, FUN = mean)
+
+
+aggregate(all_v2$ride_length ~ all_v2$member_casual + all_v2$season, FUN = mean) # to see the average ride time each season, members vs. casual
+```
+
+To see the mean ride length per season, also to compare members and casual customers:
+
+```{r}
+
+all_v2 %>%
+  group_by(member_casual, season) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, season)
+
+```
+
+To see the mean ride length per week days, also to compare members and casual customers:
+
+```{r}
+all_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>%  #creates weekday field using wday()
+  group_by(member_casual, weekday) %>%  #groups by usertype and weekday
+  summarise(number_of_rides = n()							#calculates the number of rides and average duration 
+            ,average_duration = mean(ride_length)) %>% 		# calculates the average duration
+  arrange(member_casual, weekday)								# sorts
+```
+
+
+
+## Visualization
+
+This section is for visualization. The following graphs give visualizations about the analysis.
+
+```{r echo=TRUE}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        #visualize number of rides by ride types
+
+all_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge")
+
+```
+
+```{r echo=TRUE}
+#visualization for average duration
+
+all_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge")
+```
+
+```{r echo=TRUE}
+#visualization for rideable type
+
+all_v2 %>%
+  group_by(member_casual, rideable_type) %>%
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>%
+  arrange(member_casual, rideable_type) %>%
+  ggplot(aes(x = rideable_type, y = average_duration, fill = member_casual)) +
+    geom_col(position = "dodge")
+
+```
+
+
+```{r echo=TRUE}
+#visualization for seasons
+
+all_v2 %>%
+  group_by(member_casual, season) %>%
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>%
+  arrange(member_casual, season) %>%
+  ggplot(aes(x = season, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge")
+```
+
+## Findings
+
+First of all, casual customers ride more than members in weekends in terms of number of rides. For this reason, if the company wants to get more members from casual customers, adding special events or packets for weekends could be useful. A membership packet for weekends could attract casual customers. Members ride more than casual customers in weekdays. This could be due to using bikes for transportation. 
+
+Secondly, the average duration of ride length of casual customers is more than the average duration of the members. I believe this could be due to members being busy but additional data is required. 
+
+Additionally, none of the members use docked bike type. For this reason, a discount or a special packet for classic and electric bike types could attract more members from the casual customers.
+
+Finally, I checked the average duration per seasons, and the average ride length of casual customers is more than that of members. There is a slight decrease in winters but this is probably due to weather being cold.
